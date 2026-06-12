@@ -76,3 +76,14 @@ def upload_document(file: UploadFile = File(...)):
 @app.get("/api/docs")
 def get_documents():
     return documents
+
+
+@app.get("/api/docs/{doc_id}")
+def get_document(doc_id: int):
+
+    for document in documents:
+        if document["id"] == doc_id:
+            return document
+
+    return {"message": "Document not found"}
+    
