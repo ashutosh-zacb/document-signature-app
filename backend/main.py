@@ -8,6 +8,8 @@ app = FastAPI()
 
 users = []
 documents = []
+signatures = []
+audit_logs = []
 
 UPLOAD_FOLDER = "uploads"
 
@@ -86,4 +88,51 @@ def get_document(doc_id: int):
             return document
 
     return {"message": "Document not found"}
+@app.post("/api/signatures")
+def create_signature(doc_id: int, user_id: int, x: float, y: float, page: int):
+    signature = {
+        "id": len(signatures) + 1,
+        "doc_id": doc_id,
+        "user_id": user_id,
+        "x": x,
+        "y": y,
+        "page": page,
+        "status": "pending"
+    }
+
+    signatures.append(signature)
+
+    audit_logs.append({
+        "action": "signature_position_added",
+        "doc_id": doc_id,
+        "user_id": user_id,
+        "details": f"Signature placed on page {page} at x={x}, y={y}"
+    })
+
+    return {
+        "message": "Signature position saved successfully",
+        "signature": signature
+    }
+
+
+@app.get("/api/signatures/{doc_id}")
+def get_signatures(doc_id: int):
+    result = []
+
+    for signature in signatures:
+        if signature["doc_id"] == doc_id:
+            result.append(signature)
+
+    return result
+
+
+@app.get("/api/audit/{doc_id}")
+def get_audit_logs(doc_id: int):
+    result = []
+
+    for log in audit_logs:
+        if log["doc_id"] == doc_id:
+            result.append(log)
+
+    return result
     
