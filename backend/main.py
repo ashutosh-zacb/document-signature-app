@@ -3,6 +3,7 @@ from schemas.user import UserRegister, UserLogin
 import bcrypt
 import os
 import shutil
+import fitz
 
 app = FastAPI()
 
@@ -135,4 +136,48 @@ def get_audit_logs(doc_id: int):
             result.append(log)
 
     return result
-    
+@app.post("/api/signatures/finalize")
+def finalize_document(doc_id: int):
+
+    document_data = None
+
+    for doc in documents:
+        if doc["id"] == doc_id:
+            document_data = doc
+            break
+
+    if document_data is None:
+        return {"message": "Document not found"}
+
+    pdf = fitz.open(document_data["path"])
+
+    for signature in signatures:
+
+        if signature["doc_id"] == doc_id:
+
+            page = pdf[signature["page"] - 1]
+
+            page.insert_text(
+                (signature["x"], signature["y"]),
+                f"Signed by User {signature['user_id']}",
+                fontsize=12
+            )
+
+            signature["status"] = "signed"
+
+    signed_path = f"uploads/signed_{document_data['filename']}"
+
+    pdf.save(signed_path)
+    pdf.close()
+
+    audit_logs.append({
+        "action": "document_signed",
+        "doc_id": doc_id,
+        "user_id": 1,
+        "details": "Signed PDF generated"
+    })
+
+    return {
+        "message": "Signed PDF generated successfully",
+        "signed_file": signed_path
+    }
