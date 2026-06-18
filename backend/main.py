@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from schemas.user import UserRegister, UserLogin
 import bcrypt
 import os
@@ -6,6 +7,13 @@ import shutil
 import fitz
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 users = []
 documents = []
@@ -180,4 +188,12 @@ def finalize_document(doc_id: int):
     return {
         "message": "Signed PDF generated successfully",
         "signed_file": signed_path
+    }
+
+@app.get("/api/status")
+def status():
+    return {
+        "documents": len(documents),
+        "signatures": len(signatures),
+        "audit_logs": len(audit_logs)
     }
