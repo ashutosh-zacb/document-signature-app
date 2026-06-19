@@ -1,4 +1,6 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
+from fastapi.responses import FileResponse
+from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from schemas.user import UserRegister, UserLogin
 import bcrypt
@@ -97,8 +99,19 @@ def get_document(doc_id: int):
             return document
 
     return {"message": "Document not found"}
+
 @app.post("/api/signatures")
-def create_signature(doc_id: int, user_id: int, x: float, y: float, page: int):
+def create_signature(
+    request: Request,
+    doc_id: int,
+    user_id: int,
+    x: float,
+    y: float,
+    page: int,
+    signature_text: str = "Signed"
+):
+    ip_address = request.client.host
+
     signature = {
         "id": len(signatures) + 1,
         "doc_id": doc_id,
@@ -106,7 +119,10 @@ def create_signature(doc_id: int, user_id: int, x: float, y: float, page: int):
         "x": x,
         "y": y,
         "page": page,
-        "status": "pending"
+        "signature_text": signature_text,
+        "status": "pending",
+        "ip_address": ip_address,
+        "timestamp": str(datetime.now())
     }
 
     signatures.append(signature)
@@ -115,11 +131,13 @@ def create_signature(doc_id: int, user_id: int, x: float, y: float, page: int):
         "action": "signature_position_added",
         "doc_id": doc_id,
         "user_id": user_id,
-        "details": f"Signature placed on page {page} at x={x}, y={y}"
+        "ip_address": ip_address,
+        "timestamp": str(datetime.now()),
+        "details": f"Signature '{signature_text}' placed on page {page} at x={x}, y={y}"
     })
 
     return {
-        "message": "Signature position saved successfully",
+        "message": "Signature saved successfully",
         "signature": signature
     }
 
@@ -143,9 +161,11 @@ def get_audit_logs(doc_id: int):
         if log["doc_id"] == doc_id:
             result.append(log)
 
-    return result
+    return result 
+
 @app.post("/api/signatures/finalize")
-def finalize_document(doc_id: int):
+def finalize_document(request: Request, doc_id: int):
+    ip_address = request.client.host
 
     document_data = None
 
@@ -160,20 +180,25 @@ def finalize_document(doc_id: int):
     pdf = fitz.open(document_data["path"])
 
     for signature in signatures:
-
         if signature["doc_id"] == doc_id:
+            page_index = signature["page"] - 1
 
-            page = pdf[signature["page"] - 1]
+            if page_index < 0 or page_index >= len(pdf):
+                continue
+
+            page = pdf[page_index]
 
             page.insert_text(
                 (signature["x"], signature["y"]),
-                f"Signed by User {signature['user_id']}",
-                fontsize=12
+                signature.get("signature_text", "Signed"),
+                fontsize=16,
+                color=(0, 0, 1)
             )
 
             signature["status"] = "signed"
 
-    signed_path = f"uploads/signed_{document_data['filename']}"
+    signed_filename = f"signed_{document_data['filename']}"
+    signed_path = os.path.join(UPLOAD_FOLDER, signed_filename)
 
     pdf.save(signed_path)
     pdf.close()
@@ -182,12 +207,15 @@ def finalize_document(doc_id: int):
         "action": "document_signed",
         "doc_id": doc_id,
         "user_id": 1,
-        "details": "Signed PDF generated"
+        "ip_address": ip_address,
+        "timestamp": str(datetime.now()),
+        "details": "Signed PDF generated successfully"
     })
 
     return {
         "message": "Signed PDF generated successfully",
-        "signed_file": signed_path
+        "signed_file": signed_path,
+        "download_url": f"/api/download/{signed_filename}"
     }
 
 @app.get("/api/status")
@@ -220,3 +248,16 @@ def reject_signature(doc_id: int, reason: str):
             }
 
     return {"message": "Document not found"}
+
+@app.get("/api/download/{filename}")
+def download_file(filename: str):
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+
+    if not os.path.exists(file_path):
+        return {"message": "File not found"}
+
+    return FileResponse(
+        file_path,
+        media_type="application/pdf",
+        filename=filename
+    )

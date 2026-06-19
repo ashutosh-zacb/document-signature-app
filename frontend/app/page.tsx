@@ -14,6 +14,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [numPages, setNumPages] = useState(0);
   const [documentId, setDocumentId] = useState<number | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState("");
 
   const [signatureText, setSignatureText] = useState("Ashutosh Nayak");
   const [position, setPosition] = useState({ x: 120, y: 120 });
@@ -47,42 +48,49 @@ export default function Home() {
   };
 
   const saveSignature = async () => {
-    const docId = documentId || 1;
+  const docId = documentId || 1;
 
-    try {
-      const response = await fetch(
-        `${BACKEND_URL}/api/signatures?doc_id=${docId}&user_id=1&x=${Math.round(
-          position.x
-        )}&y=${Math.round(position.y)}&page=1`,
-        {
-          method: "POST",
-        }
-      );
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/signatures?doc_id=${docId}&user_id=1&x=${Math.round(
+        position.x
+      )}&y=${Math.round(position.y)}&page=1&signature_text=${encodeURIComponent(
+        signatureText
+      )}`,
+      {
+        method: "POST",
+      }
+    );
 
-      const data = await response.json();
-      alert(data.message || "Signature saved successfully");
-    } catch (error) {
-      alert("Signature save failed. Check backend.");
+    const data = await response.json();
+    alert(data.message || "Signature saved successfully");
+  } catch (error) {
+    alert("Signature save failed. Check backend.");
+  }
+};
+
+const finalizePDF = async () => {
+  const docId = documentId || 1;
+
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/signatures/finalize?doc_id=${docId}`,
+      {
+        method: "POST",
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.download_url) {
+      setDownloadUrl(`${BACKEND_URL}${data.download_url}`);
     }
-  };
 
-  const finalizePDF = async () => {
-    const docId = documentId || 1;
-
-    try {
-      const response = await fetch(
-        `${BACKEND_URL}/api/signatures/finalize?doc_id=${docId}`,
-        {
-          method: "POST",
-        }
-      );
-
-      const data = await response.json();
-      alert(data.message || "Signed PDF generated");
-    } catch (error) {
-      alert("Finalize failed. Check backend.");
-    }
-  };
+    alert(data.message || "Signed PDF generated");
+  } catch (error) {
+    alert("Finalize failed. Check backend.");
+  }
+};
 
   return (
     <main style={{ padding: "30px", fontFamily: "Arial, sans-serif" }}>
@@ -197,6 +205,26 @@ export default function Home() {
             >
               Generate Signed PDF
             </button>
+            {downloadUrl && (
+  <div style={{ marginTop: "15px" }}>
+    <a
+      href={downloadUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        background: "#7c3aed",
+        color: "white",
+        padding: "10px 18px",
+        borderRadius: "6px",
+        textDecoration: "none",
+        display: "inline-block",
+        fontWeight: "bold",
+      }}
+    >
+      Download Signed PDF
+    </a>
+  </div>
+)}
           </div>
 
           <p>
