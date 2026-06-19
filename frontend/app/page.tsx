@@ -16,6 +16,7 @@ export default function Home() {
   const [documentId, setDocumentId] = useState<number | null>(null);
   const [downloadUrl, setDownloadUrl] = useState("");
   const [publicLink, setPublicLink] = useState("");
+  const [status, setStatus] = useState("");
 
   const [signatureText, setSignatureText] = useState("Ashutosh Nayak");
   const [position, setPosition] = useState({ x: 120, y: 120 });
@@ -109,6 +110,39 @@ const createPublicLink = async () => {
     alert(data.message || "Public signing link created");
   } catch (error) {
     alert("Public link creation failed. Check backend.");
+  }
+};
+const checkStatus = async () => {
+  const docId = documentId || 1;
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/signature-status/${docId}`);
+    const data = await response.json();
+
+    setStatus(data.status || data.message || "Status checked");
+    alert(data.status || data.message || "Status checked");
+  } catch (error) {
+    alert("Status check failed. Check backend.");
+  }
+};
+
+const rejectDocument = async () => {
+  const docId = documentId || 1;
+
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/signatures/reject?doc_id=${docId}`,
+      {
+        method: "POST",
+      }
+    );
+
+    const data = await response.json();
+
+    setStatus("rejected");
+    alert(data.message || "Document rejected");
+  } catch (error) {
+    alert("Reject failed. Check backend.");
   }
 };
 
@@ -261,6 +295,44 @@ const createPublicLink = async () => {
     Create Public Signing Link
   </button>
 </div>
+<div style={{ marginTop: "15px" }}>
+  <button
+    onClick={checkStatus}
+    style={{
+      background: "#334155",
+      color: "white",
+      padding: "10px 18px",
+      borderRadius: "6px",
+      border: "none",
+      cursor: "pointer",
+      fontWeight: "bold",
+      marginRight: "10px",
+    }}
+  >
+    Check Status
+  </button>
+
+  <button
+    onClick={rejectDocument}
+    style={{
+      background: "#b91c1c",
+      color: "white",
+      padding: "10px 18px",
+      borderRadius: "6px",
+      border: "none",
+      cursor: "pointer",
+      fontWeight: "bold",
+    }}
+  >
+    Reject Document
+  </button>
+</div>
+
+{status && (
+  <p style={{ marginTop: "15px", fontWeight: "bold" }}>
+    Current Status: {status}
+  </p>
+)}
 
 {publicLink && (
   <div style={{ marginTop: "15px" }}>
