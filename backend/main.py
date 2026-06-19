@@ -7,6 +7,7 @@ import bcrypt
 import os
 import shutil
 import fitz
+import uuid 
 
 app = FastAPI()
 app.add_middleware(
@@ -21,6 +22,8 @@ users = []
 documents = []
 signatures = []
 audit_logs = []
+public_links = {}
+
 
 UPLOAD_FOLDER = "uploads"
 
@@ -261,3 +264,51 @@ def download_file(filename: str):
         media_type="application/pdf",
         filename=filename
     )
+@app.post("/api/docs/share/{doc_id}")
+def create_public_link(request: Request, doc_id: int):
+    ip_address = request.client.host
+
+    document_data = None
+    for doc in documents:
+        if doc["id"] == doc_id:
+            document_data = doc
+            break
+
+    if document_data is None:
+        return {"message": "Document not found"}
+
+    token = str(uuid.uuid4())
+    public_links[token] = doc_id
+
+    audit_logs.append({
+        "action": "public_signing_link_created",
+        "doc_id": doc_id,
+        "user_id": 1,
+        "ip_address": ip_address,
+        "timestamp": str(datetime.now()),
+        "details": "Public signing link created"
+    })
+
+    return {
+        "message": "Public signing link created",
+        "token": token,
+        "public_link": f"http://127.0.0.1:8000/api/public/sign/{token}"
+    }
+
+
+@app.get("/api/public/sign/{token}")
+def get_public_signing_document(token: str):
+    if token not in public_links:
+        return {"message": "Invalid or expired signing link"}
+
+    doc_id = public_links[token]
+
+    for doc in documents:
+        if doc["id"] == doc_id:
+            return {
+                "message": "Public signing document found",
+                "document": doc,
+                "doc_id": doc_id
+            }
+
+    return {"message": "Document not found"}

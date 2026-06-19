@@ -15,6 +15,7 @@ export default function Home() {
   const [numPages, setNumPages] = useState(0);
   const [documentId, setDocumentId] = useState<number | null>(null);
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [publicLink, setPublicLink] = useState("");
 
   const [signatureText, setSignatureText] = useState("Ashutosh Nayak");
   const [position, setPosition] = useState({ x: 120, y: 120 });
@@ -89,6 +90,25 @@ const finalizePDF = async () => {
     alert(data.message || "Signed PDF generated");
   } catch (error) {
     alert("Finalize failed. Check backend.");
+  }
+};
+const createPublicLink = async () => {
+  const docId = documentId || 1;
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/docs/share/${docId}`, {
+      method: "POST",
+    });
+
+    const data = await response.json();
+
+    if (data.public_link) {
+      setPublicLink(data.public_link);
+    }
+
+    alert(data.message || "Public signing link created");
+  } catch (error) {
+    alert("Public link creation failed. Check backend.");
   }
 };
 
@@ -223,6 +243,42 @@ const finalizePDF = async () => {
     >
       Download Signed PDF
     </a>
+  </div>
+)}
+<div style={{ marginTop: "15px" }}>
+  <button
+    onClick={createPublicLink}
+    style={{
+      background: "#0f766e",
+      color: "white",
+      padding: "10px 18px",
+      borderRadius: "6px",
+      border: "none",
+      cursor: "pointer",
+      fontWeight: "bold",
+    }}
+  >
+    Create Public Signing Link
+  </button>
+</div>
+
+{publicLink && (
+  <div style={{ marginTop: "15px" }}>
+    <p>
+      Public Link:
+      <a
+        href={publicLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: "blue",
+          marginLeft: "8px",
+          fontWeight: "bold",
+        }}
+      >
+        {publicLink}
+      </a>
+    </p>
   </div>
 )}
           </div>
