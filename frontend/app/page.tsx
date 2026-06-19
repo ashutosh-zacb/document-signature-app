@@ -17,6 +17,8 @@ export default function Home() {
   const [downloadUrl, setDownloadUrl] = useState("");
   const [publicLink, setPublicLink] = useState("");
   const [status, setStatus] = useState("");
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
 
   const [signatureText, setSignatureText] = useState("Ashutosh Nayak");
   const [position, setPosition] = useState({ x: 120, y: 120 });
@@ -143,6 +145,44 @@ const rejectDocument = async () => {
     alert(data.message || "Document rejected");
   } catch (error) {
     alert("Reject failed. Check backend.");
+  }
+};
+const viewAuditTrail = async () => {
+  const docId = documentId || 1;
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/audit/${docId}`);
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+      setAuditLogs(data);
+    } else if (Array.isArray(data.audit_logs)) {
+      setAuditLogs(data.audit_logs);
+    } else {
+      setAuditLogs([]);
+    }
+
+    alert("Audit trail loaded");
+  } catch (error) {
+    alert("Audit trail fetch failed. Check backend.");
+  }
+};
+const loadDocuments = async () => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/docs`);
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+      setDocuments(data);
+    } else if (Array.isArray(data.documents)) {
+      setDocuments(data.documents);
+    } else {
+      setDocuments([]);
+    }
+
+    alert("Documents loaded");
+  } catch (error) {
+    alert("Documents fetch failed. Check backend.");
   }
 };
 
@@ -332,6 +372,106 @@ const rejectDocument = async () => {
   <p style={{ marginTop: "15px", fontWeight: "bold" }}>
     Current Status: {status}
   </p>
+)}
+<div style={{ marginTop: "15px" }}>
+  <button
+    onClick={viewAuditTrail}
+    style={{
+      background: "#9333ea",
+      color: "white",
+      padding: "10px 18px",
+      borderRadius: "6px",
+      border: "none",
+      cursor: "pointer",
+      fontWeight: "bold",
+    }}
+  >
+    View Audit Trail
+  </button>
+</div>
+<div style={{ marginTop: "15px" }}>
+  <button
+    onClick={loadDocuments}
+    style={{
+      background: "#ea580c",
+      color: "white",
+      padding: "10px 18px",
+      borderRadius: "6px",
+      border: "none",
+      cursor: "pointer",
+      fontWeight: "bold",
+    }}
+  >
+    Load My Documents
+  </button>
+</div>
+{documents.length > 0 && (
+  <div
+    style={{
+      marginTop: "20px",
+      padding: "15px",
+      border: "1px solid #ea580c",
+      borderRadius: "8px",
+      background: "#fff7ed",
+    }}
+  >
+    <h2 style={{ fontSize: "22px", fontWeight: "bold" }}>
+      My Documents
+    </h2>
+
+    {documents.map((doc, index) => (
+      <div
+        key={index}
+        style={{
+          marginTop: "12px",
+          padding: "10px",
+          border: "1px solid #ddd",
+          borderRadius: "6px",
+          background: "white",
+        }}
+      >
+        <p><b>ID:</b> {doc.id}</p>
+        <p><b>Filename:</b> {doc.filename}</p>
+        <p><b>Status:</b> {doc.status || "uploaded"}</p>
+        <p><b>Path:</b> {doc.path}</p>
+      </div>
+    ))}
+  </div>
+)}
+{auditLogs.length > 0 && (
+  <div
+    style={{
+      marginTop: "20px",
+      padding: "15px",
+      border: "1px solid #9333ea",
+      borderRadius: "8px",
+      background: "#faf5ff",
+    }}
+  >
+    <h2 style={{ fontSize: "22px", fontWeight: "bold" }}>
+      Audit Trail
+    </h2>
+
+    {auditLogs.map((log, index) => (
+      <div
+        key={index}
+        style={{
+          marginTop: "12px",
+          padding: "10px",
+          border: "1px solid #ddd",
+          borderRadius: "6px",
+          background: "white",
+        }}
+      >
+        <p><b>Action:</b> {log.action}</p>
+        <p><b>Document ID:</b> {log.doc_id}</p>
+        <p><b>User ID:</b> {log.user_id}</p>
+        <p><b>IP Address:</b> {log.ip_address}</p>
+        <p><b>Timestamp:</b> {log.timestamp}</p>
+        <p><b>Details:</b> {log.details}</p>
+      </div>
+    ))}
+  </div>
 )}
 
 {publicLink && (
