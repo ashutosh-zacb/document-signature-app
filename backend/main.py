@@ -197,3 +197,26 @@ def status():
         "signatures": len(signatures),
         "audit_logs": len(audit_logs)
     }
+
+@app.post("/api/signatures/reject")
+def reject_signature(doc_id: int, reason: str):
+
+    for signature in signatures:
+
+        if signature["doc_id"] == doc_id:
+
+            signature["status"] = "rejected"
+
+            audit_logs.append({
+                "action": "signature_rejected",
+                "doc_id": doc_id,
+                "user_id": signature["user_id"],
+                "details": reason
+            })
+
+            return {
+                "message": "Signature rejected",
+                "reason": reason
+            }
+
+    return {"message": "Document not found"}
